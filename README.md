@@ -40,12 +40,12 @@ module.exports = {
 
 |                    Name                     |            Type             | Default | Description                                        |
 | :-----------------------------------------: | :-------------------------: | :-----: | :------------------------------------------------- |
-|              **[`refreshAfterCompile`](#refreshAfterCompile)**              |    `boolean`    | `false`  | Enable/Disable `page refresh` when compilation is finish                    |
+|              **[`refreshAfterCompile`](#refreshAfterCompile)**              |    `boolean`    | `false`  | Enable/Disable *page refresh* when compilation is finish                    |
 
 
 ### `refreshAfterCompile`
 
-Type: `Boolean`
+Type: `boolean`
 Default: `false`
 
-Set 'false' for a seamless dev experience.
+Set `false` for a seamless dev experience.
