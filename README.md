@@ -7,6 +7,10 @@
   <p>Plugin that saves a tremendous amount of time.</p>
 </div>
 
+
+## Why
+Starting the development server is taking you a long time when the codebase is large. You have tried dynamic imports, it only does a load-on-demand, the whole project was still been compiled. We don't want to wait a couple of minutes for a simple modification. People don't waste time for the things they have never used!
+
 ## Install
 ```bash
   npm i --save-dev lazy-compile-webpack-plugin
