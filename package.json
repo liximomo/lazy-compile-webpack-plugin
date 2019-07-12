@@ -30,14 +30,29 @@
     "lib"
   ],
   "scripts": {
-    "demo": "cd demo && npm start"
+    "demo": "cd demo && npm start",
+    "test": "jest"
   },
   "dependencies": {
     "detect-port-alt": "^1.1.6",
-    "loader-utils": "^1.2.3",
-    "util.promisify": "^1.0.0"
+    "loader-utils": "^1.2.3"
   },
   "peerDependencies": {
     "webpack": "^4.0.0"
+  },
+  "devDependencies": {
+    "jest": "^24.8.0",
+    "memory-fs": "^0.4.1",
+    "superagent": "^5.1.0",
+    "webpack": "^4.35.3"
+  },
+  "jest": {
+    "verbose": true,
+    "moduleFileExtensions": [
+      "js"
+    ],
+    "testMatch": [
+      "<rootDir>/tests/**/*.spec.js"
+    ]
   }
 }
