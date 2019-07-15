@@ -4,27 +4,17 @@ const MemoryFS = require('memory-fs');
 const superagent = require('superagent');
 const LazyCompilePlugin = require('../');
 
+function getPath(...subpaths) {
+  return path.join(__dirname, 'fixtures', ...subpaths);
+}
+
 function setCompilerFs(compiler, fs) {
-  compiler.inputFileSystem = fs;
   compiler.outputFileSystem = fs;
-  compiler.resolvers.normal.fileSystem = fs;
-  compiler.resolvers.context.fileSystem = fs;
 }
 
 // function escapeStringRegExp(str) {
 //   return str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&');
 // }
-
-function createDonePlugin(doneCallback) {
-  return function() {
-    const hasHooks = Boolean(this.hooks);
-    if (hasHooks) {
-      this.hooks.done.tap('MyTestPlugin', doneCallback);
-    } else {
-      this.plugin('done', doneCallback);
-    }
-  };
-}
 
 function createCompiler(webpackConfig, fs) {
   const configs = Array.isArray(webpackConfig)
@@ -58,99 +48,122 @@ function runCompiler(webpackConfig, fs) {
   });
 }
 
+function waitForCompile(compiler, initialCb) {
+  const queue = initialCb ? [initialCb] : [];
+  let stats;
+
+  function shift() {
+    const job = queue.shift();
+    if (queue.length) {
+      let hasError = false;
+      try {
+        job(stats);
+      } catch (e) {
+        hasError = true;
+        finish(e);
+      }
+    }
+
+    if (queue.length === 1) {
+      finish();
+    }
+  }
+
+  function finish(err) {
+    const done = queue[queue.length - 1];
+    compiler.watching.close(() => {
+      if (done) {
+        if (err) {
+          done.fail(err);
+        } else {
+          done();
+        }
+      } else {
+        new Error('waitForCompile chain is missing .then(done)');
+      }
+    });
+  }
+
+  const chainer = {
+    then: nextCb => {
+      queue.push(nextCb);
+      return chainer;
+    },
+  };
+
+  compiler.hooks.done.tap('waitForCompile', _stats => {
+    stats = _stats;
+    shift();
+  });
+
+  return chainer;
+}
+
 function watchCompiler(webpackConfig, fs) {
   const compiler = createCompiler(webpackConfig, fs);
-  return new Promise((resolve, reject) => {
-    compiler.watch(
-      {
-        // Example watchOptions
-        aggregateTimeout: 300,
-        poll: undefined,
-      },
-      (err, stats) => {
-        if (err) {
-          const cStats = stats.stats
-            ? stats.stats.find(s => s.compilation.errors.length)
-            : stats;
-          return reject(cStats.compilation.errors[0]);
-        }
-
-        resolve();
-      }
-    );
-  });
+  compiler.watching = compiler.watch(
+    {
+      aggregateTimeout: 500,
+      poll: false,
+    },
+    () => {
+      // do nohting
+    }
+  );
+  return compiler;
 }
 
 describe('plugin', () => {
   const fs = new MemoryFS();
-  const dummyLoaderPath = require.resolve('./helper/dummy-loader.js');
-  const dummyLoader = require(dummyLoaderPath);
-
-  // make webpack pass the loader resolve
-  fs.mkdirpSync(path.dirname(dummyLoaderPath));
-  fs.writeFileSync(
-    dummyLoaderPath,
-    `module.exports = function dummyLoader(source) {
-      return 'sss';
-    };`,
-    'utf-8'
+  const dummyLoaderPath = require.resolve(
+    './fixtures/__shared__/dummy-loader.js'
   );
-
+  const dummyLoader = require(dummyLoaderPath);
   const baseConfig = {
-    entry: '/src/index',
+    entry: getPath('simple'),
     output: {
       filename: 'bundle.js',
       path: '/out',
       chunkFilename: '[name].chunk.js',
     },
   };
+  let lazyPlugin;
 
   beforeEach(() => {
+    lazyPlugin = new LazyCompilePlugin();
     dummyLoader.loader = jest.fn(x => x);
-    fs.mkdirSync('/src');
-    fs.writeFileSync('/src/a.js', `console.log("a.js")`, 'utf-8');
-    fs.writeFileSync('/src/b.js', `console.log("b.js")`, 'utf-8');
   });
   afterEach(() => {
-    fs.rmdirSync('/src');
+    lazyPlugin.dispose();
     fs.rmdirSync('/out');
   });
 
   it('should generate magic code for async module', async () => {
-    fs.writeFileSync(
-      '/src/index.js',
-      `import(/* webpackChunkName: 'a' */ "./a")`,
-      'utf-8'
-    );
-    const plugin = new LazyCompilePlugin();
     const lazyStats = await runCompiler(
       {
         ...baseConfig,
-        plugins: [plugin],
+        plugins: [lazyPlugin],
       },
       fs
     );
     expect(lazyStats.compilation.assets['a.chunk.js']).toBeDefined();
     expect(lazyStats.compilation.assets['a.chunk.js'].source()).toEqual(
       expect.stringContaining(
-        `@activationUrl ${plugin.server.createActivationUrl('/src/a.js')}`
+        `@activationUrl ${lazyPlugin.server.createActivationUrl(
+          getPath('simple', 'a.js')
+        )}`
       )
     );
   });
 
   it('should should not run loader for async module', async () => {
-    fs.writeFileSync(
-      '/src/index.js',
-      `import(/* webpackChunkName: 'a' */ "./a")`,
-      'utf-8'
-    );
     await runCompiler(
       {
         ...baseConfig,
         module: {
-          rules: [{ test: '/src/a.js', use: dummyLoaderPath }],
+          rules: [{ test: /a\.js$/, use: dummyLoaderPath }],
         },
-        plugins: [new LazyCompilePlugin()],
+        plugins: [lazyPlugin],
       },
       fs
     );
@@ -159,7 +172,7 @@ describe('plugin', () => {
       {
         ...baseConfig,
         module: {
-          rules: [{ test: '/src/a.js', use: dummyLoaderPath }],
+          rules: [{ test: /a\.js$/, use: dummyLoaderPath }],
         },
       },
       fs
@@ -167,29 +180,46 @@ describe('plugin', () => {
     expect(dummyLoader.loader).toHaveBeenCalled();
   });
 
-  it('should trigger recompile when module is actived', async () => {
-    fs.writeFileSync(
-      '/src/index.js',
-      `import(/* webpackChunkName: 'a' */ "./a")`,
-      'utf-8'
-    );
-    const plugin = new LazyCompilePlugin();
-    const spy = jest
-      .spyOn(plugin, '_recompile')
-      .mockImplementationOnce(() => Promise.resolve());
-    await runCompiler(
+  it('should trigger recompile for the real moudle when module is actived', done => {
+    // const spy = jest.spyOn(lazyPlugin, '_recompile');
+    const compiler = watchCompiler(
       {
         ...baseConfig,
-        plugins: [plugin],
+        plugins: [lazyPlugin],
+        module: {
+          rules: [{ test: /a\.js$/, use: dummyLoaderPath }],
+        },
       },
       fs
     );
-    const resp = await superagent.get(
-      plugin.server
-        .createActivationUrl('/src/a.js')
-        .replace('{host}', 'localhost')
-    );
-    expect(resp.status).toBe(200);
-    expect(spy.mock.calls[0][0]).toEqual('/src/a.js');
+    waitForCompile(compiler, stats => {
+      expect(dummyLoader.loader).not.toHaveBeenCalled();
+      expect(stats.compilation.assets['a.chunk.js'].source()).toEqual(
+        expect.stringContaining(
+          `@activationUrl ${lazyPlugin.server.createActivationUrl(
+            getPath('simple', 'a.js')
+          )}`
+        )
+      );
+      superagent
+        .get(
+          lazyPlugin.server
+            .createActivationUrl(getPath('simple', 'a.js'))
+            .replace('{host}', 'localhost')
+        )
+        // request won't be sent if we don't call then
+        .then(() => {});
+    })
+      .then(stats => {
+        expect(dummyLoader.loader).toHaveBeenCalled();
+        expect(stats.compilation.assets['a.chunk.js'].source()).toEqual(
+          expect.not.stringContaining(
+            `@activationUrl ${lazyPlugin.server.createActivationUrl(
+              getPath('simple', 'a.js')
+            )}`
+          )
+        );
+      })
+      .then(done);
   });
 });
