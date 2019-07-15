@@ -185,7 +185,9 @@ describe('plugin', () => {
       fs
     );
     const resp = await superagent.get(
-      plugin.server.createActivationUrl('/src/a.js')
+      plugin.server
+        .createActivationUrl('/src/a.js')
+        .replace('{host}', 'localhost')
     );
     expect(resp.status).toBe(200);
     expect(spy.mock.calls[0][0]).toEqual('/src/a.js');
