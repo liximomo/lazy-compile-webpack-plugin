@@ -1,6 +1,6 @@
 {
   "name": "lazy-compile-webpack-plugin",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Lazy compile dynamic imports to boost your webpack startup time.",
   "keywords": [
     "webpack",
