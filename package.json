@@ -31,7 +31,8 @@
   ],
   "scripts": {
     "demo": "cd demo && npm start",
-    "test": "jest"
+    "test": "jest",
+    "release": "bash scripts/release.sh"
   },
   "dependencies": {
     "detect-port-alt": "^1.1.6",
