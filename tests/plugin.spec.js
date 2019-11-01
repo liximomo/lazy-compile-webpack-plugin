@@ -129,6 +129,17 @@ describe('plugin', () => {
   };
   let lazyPlugin;
 
+  function activeChunk(file) {
+    superagent
+      .get(
+        lazyPlugin.server
+          .createActivationUrl(getPath('simple', file))
+          .replace('{host}', 'localhost')
+      )
+      // request won't be sent if we don't call then
+      .then(() => {});
+  }
+
   beforeEach(() => {
     lazyPlugin = new LazyCompilePlugin();
     dummyLoader.loader = jest.fn(x => x);
@@ -146,11 +157,11 @@ describe('plugin', () => {
       },
       fs
     );
-    expect(lazyStats.compilation.assets['a.chunk.js']).toBeDefined();
-    expect(lazyStats.compilation.assets['a.chunk.js'].source()).toEqual(
+    expect(lazyStats.compilation.assets['bundle.js']).toBeDefined();
+    expect(lazyStats.compilation.assets['bundle.js'].source()).toEqual(
       expect.stringContaining(
         `@activationUrl ${lazyPlugin.server.createActivationUrl(
-          getPath('simple', 'a.js')
+          getPath('simple', 'index.js')
         )}`
       )
     );
@@ -192,24 +203,21 @@ describe('plugin', () => {
       },
       fs
     );
-    waitForCompile(compiler, stats => {
-      expect(dummyLoader.loader).not.toHaveBeenCalled();
-      expect(stats.compilation.assets['a.chunk.js'].source()).toEqual(
-        expect.stringContaining(
-          `@activationUrl ${lazyPlugin.server.createActivationUrl(
-            getPath('simple', 'a.js')
-          )}`
-        )
-      );
-      superagent
-        .get(
-          lazyPlugin.server
-            .createActivationUrl(getPath('simple', 'a.js'))
-            .replace('{host}', 'localhost')
-        )
-        // request won't be sent if we don't call then
-        .then(() => {});
+
+    waitForCompile(compiler, () => {
+      activeChunk('index.js');
     })
+      .then(stats => {
+        expect(dummyLoader.loader).not.toHaveBeenCalled();
+        expect(stats.compilation.assets['a.chunk.js'].source()).toEqual(
+          expect.stringContaining(
+            `@activationUrl ${lazyPlugin.server.createActivationUrl(
+              getPath('simple', 'a.js')
+            )}`
+          )
+        );
+        activeChunk('a.js');
+      })
       .then(stats => {
         expect(dummyLoader.loader).toHaveBeenCalled();
         expect(stats.compilation.assets['a.chunk.js'].source()).toEqual(
