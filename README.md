@@ -33,15 +33,15 @@ module.exports = {
     filename: 'bundle.js',
   },
   plugins: [new LazyCompilePlugin()],
-};
+}
 ```
 
 ## Options
 
-|                    Name                     |            Type             | Default | Description                                        |
-| :-----------------------------------------: | :-------------------------: | :-----: | :------------------------------------------------- |
-|              **[`refreshAfterCompile`](#refreshAfterCompile)**              |    `boolean`    | `false`  | Enable/Disable *page refresh* when compilation is finish                    |
-
+|                       Name                        |         Type          |   Default   | Description                                                  |
+| :-----------------------------------------------: | :-------------------: | :---------: | :----------------------------------------------------------- |
+| **[`refreshAfterCompile`](#refreshAfterCompile)** |       `boolean`       |   `false`   | Enable/Disable _page refresh_ when compilation is finish     |
+|             **[`ignores`](#ignores)**             | `string[] | RegExp[]` | `undefined` | Match webpack entry request to be ignored from lazy compiler |
 
 ### `refreshAfterCompile`
 
@@ -49,3 +49,21 @@ Type: `boolean`
 Default: `false`
 
 Set `false` for a seamless dev experience.
+
+### `ignores`
+
+Type: `string[] | RegExp[]`
+Default: `undefined`
+
+Match webpack entry request to be ignored from lazy compiler, `html-webpack-plugin` is always ignored.
+
+Specifically, an Angular app should enable this option like following:
+
+```js
+new LazyCompileWebpackPlugin({
+	ignores: [
+      /\b(html|raw|to-string)-loader\b/,
+      /\bexports\.toString\b/
+    ]
+});
+```
