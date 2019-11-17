@@ -13,12 +13,12 @@ Starting the development server is taking you a long time when the codebase is l
 
 ## Install
 
-```bash
-  npm i --save-dev lazy-compile-webpack-plugin
-```
+```sh
+# npm
+npm i --save-dev lazy-compile-webpack-plugin
 
-```bash
-  yarn add --dev lazy-compile-webpack-plugin
+# yarn
+yarn add --dev lazy-compile-webpack-plugin
 ```
 
 ## Usage
@@ -38,10 +38,10 @@ module.exports = {
 
 ## Options
 
-|                    Name                     |            Type             | Default | Description                                        |
-| :-----------------------------------------: | :-------------------------: | :-----: | :------------------------------------------------- |
-|              **[`refreshAfterCompile`](#refreshAfterCompile)**              |    `boolean`    | `false`  | Enable/Disable *page refresh* when compilation is finish                    |
-
+|                       Name                        |          Type           |   Default   | Description                                              |
+| :-----------------------------------------------: | :---------------------: | :---------: | :------------------------------------------------------- |
+| **[`refreshAfterCompile`](#refreshAfterCompile)** |        `boolean`        |   `false`   | Enable/Disable _page refresh_ when compilation is finish |
+|             **[`ignores`](#ignores)**             | `RegExp[] | Function[]` | `undefined` | Request to be ignored from lazy compiler                 |
 
 ### `refreshAfterCompile`
 
@@ -49,3 +49,21 @@ Type: `boolean`
 Default: `false`
 
 Set `false` for a seamless dev experience.
+
+### `ignores`
+
+Type: `RegExp[] | ((request: string, wpModule: object) => boolean)`
+Default: `undefined`
+
+Request to be ignored from lazy compiler, `html-webpack-plugin` is always ignored.
+
+Specifically, an Angular app should enable this option like following:
+
+```js
+new LazyCompileWebpackPlugin({
+  ignores: [
+    /\b(html|raw|to-string)-loader\b/,
+    /\bexports-loader[^?]*\?exports\.toString\(\)/
+  ],
+});
+```
