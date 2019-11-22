@@ -15,10 +15,10 @@ Starting the development server is taking you a long time when the codebase is l
 
 ```sh
 # npm
-npm i --save-dev lazy-compile-webpack-plugin
+npm i -D lazy-compile-webpack-plugin
 
 # yarn
-yarn add --dev lazy-compile-webpack-plugin
+yarn add -D lazy-compile-webpack-plugin
 ```
 
 ## Usage
@@ -41,7 +41,7 @@ module.exports = {
 |                       Name                        |          Type           |   Default   | Description                                              |
 | :-----------------------------------------------: | :---------------------: | :---------: | :------------------------------------------------------- |
 | **[`refreshAfterCompile`](#refreshAfterCompile)** |        `boolean`        |   `false`   | Enable/Disable _page refresh_ when compilation is finish |
-|             **[`ignores`](#ignores)**             | `RegExp[] | Function[]` | `undefined` | Request to be ignored from lazy compiler                 |
+|             **[`ignores`](#ignores)**             | `RegExp[] \| Function[]` | `undefined` | Request to be ignored from lazy compiler                 |
 
 ### `refreshAfterCompile`
 
